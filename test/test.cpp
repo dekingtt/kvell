@@ -1,8 +1,10 @@
 #include <iostream>
+#include <thread>
 #include "../src/log.h"
 //#include "src/util.h"
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv)
+{
     kvell::Logger::ptr logger(new kvell::Logger);
     logger->addAppender(kvell::LogAppender::ptr(new kvell::StdoutLogAppender));
 
@@ -17,5 +19,13 @@ int main(int argc, char** argv) {
     //event->getSS() << "hello kvell log";
     //logger->log(kvell::LogLevel::DEBUG, event);
     std::cout << "hello kvell log" << std::endl;
+
+    KV_LOG_INFO(logger) << "test macro";
+    KV_LOG_ERROR(logger) << "test macro error";
+
+    KV_LOG_FMT_ERROR(logger, "test macro fmt error %s", "aa");
+
+    auto l = kvell::LoggerMgr::GetInstance()->getLogger("xx");
+    KV_LOG_INFO(l) << "xxx";
     return 0;
 }

@@ -36,3 +36,4 @@ bin/
 lib/
 .vscode/
 build/
+log.txt

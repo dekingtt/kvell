@@ -2,6 +2,8 @@
 #include <iostream>
 #include <map>
 #include <functional>
+#include <stdio.h>
+#include <stdarg.h>
 
 namespace kvell
 {
@@ -26,7 +28,85 @@ namespace kvell
         return "UNKOW";
     }
 
-    LogEvent::LogEvent(){};
+    LogLevel::Level LogLevel::FromString(const std::string &str)
+    {
+#define XX(level, v)            \
+    if (str == #v)              \
+    {                           \
+        return LogLevel::level; \
+    }
+        XX(DEBUG, debug);
+        XX(INFO, info);
+        XX(WARN, warn);
+        XX(ERROR, error);
+        XX(FATAL, fatal);
+
+        XX(DEBUG, DEBUG);
+        XX(INFO, INFO);
+        XX(WARN, WARN);
+        XX(ERROR, ERROR);
+        XX(FATAL, FATAL);
+
+        return LogLevel::UNKNOW;
+#undef XX
+    }
+
+    LogEventWrap::LogEventWrap(LogEvent::ptr e)
+        : m_event(e)
+    {
+    }
+
+    LogEventWrap::~LogEventWrap()
+    {
+        m_event->getLogger()->log(m_event->getLevel(), m_event);
+    }
+
+    void LogEvent::format(const char *fmt, ...)
+    {
+        va_list al;
+        va_start(al, fmt);
+        format(fmt, al);
+        va_end(al);
+    }
+
+    void LogEvent::format(const char *fmt, va_list al)
+    {
+        char *buf = nullptr;
+        int len = vasprintf(&buf, fmt, al);
+        if (len != -1)
+        {
+            m_content << std::string(buf, len);
+            free(buf);
+        }
+    }
+
+    void LogAppender::setFormatter(LogFormatter::ptr formatter)
+    {
+        m_formatter = formatter;
+
+        if (m_formatter)
+        {
+            m_hasFormatter = true;
+        }
+        else
+        {
+            m_hasFormatter = false;
+        }
+    }
+
+    LogEvent::LogEvent(std::shared_ptr<Logger> logger, LogLevel::Level level,
+                       const char *file, uint32_t line, uint32_t elapse,
+                       uint32_t threadId, uint32_t fiberId, uint32_t time,
+                       const std::string &thread_name)
+        : m_logger(logger),
+          m_level(level),
+          m_file(file),
+          m_line(line),
+          m_elapse(elapse),
+          m_threadId(threadId),
+          m_fiberId(fiberId),
+          m_time(time),
+          m_threadName(thread_name){};
 
     ///////// Log Formatter ///////////////
     class MessageFormatItem : public LogFormatter::FormatItem
@@ -64,7 +144,7 @@ namespace kvell
         NameFormatItem(const std::string &str = "") {}
         void format(std::ostream &os, Logger::ptr logger, LogLevel::Level level, LogEvent::ptr event) override
         {
-            // os << event->getLogger()->getName();
+            os << event->getLogger()->getName();
         }
     };
 
@@ -184,16 +264,27 @@ namespace kvell
     LogFormatter::LogFormatter(const std::string &pattern)
         : m_pattern(pattern)
     {
+        init();
     }
     std::string LogFormatter::format(Logger::ptr logger, LogLevel::Level level, LogEvent::ptr event)
     {
-        std::strstream ss;
+        std::stringstream ss;
         for (auto i : m_items)
         {
             i->format(ss, logger, level, event);
         }
         return ss.str();
     }
+
+    std::ostream &LogFormatter::format(std::ostream &ofs, Logger::ptr logger, LogLevel::Level level, LogEvent::ptr event)
+    {
+        for (auto i : m_items)
+        {
+            i->format(ofs, logger, level, event);
+        }
+        return ofs;
+    }
+
     void LogFormatter::init()
     {
         // str, format, type
@@ -325,19 +416,64 @@ namespace kvell
                 }
             }
 
-            std::cout << "(" << std::get<0>(i) << ") - (" << std::get<1>(i) << ") - (" << std::get<2>(i) << ")" << std::endl;
+            // std::cout << "(" << std::get<0>(i) << ") - (" << std::get<1>(i) << ") - (" << std::get<2>(i) << ")" << std::endl;
         }
-        std::cout << m_items.size() << std::endl;
+        // std::cout << m_items.size() << std::endl;
     }
 
     Logger::Logger(const std::string &name)
-        : m_name(name){};
+        : m_name(name),
+          m_level(LogLevel::DEBUG)
+    {
+        m_formatter.reset(new LogFormatter("%d{%Y-%m-%d %H:%M:%S}%T%t%T%N%T%F%T[%p]%T[%c]%T%f:%l%T%m%n"));
+    };
+
+    void Logger::setFormatter(LogFormatter::ptr val)
+    {
+        m_formatter = val;
+        for (auto &i : m_appenders)
+        {
+            if (!i->m_hasFormatter)
+            {
+                i->setFormatter(m_formatter);
+            }
+        }
+    }
+
+    void Logger::setFormatter(const std::string &val)
+    {
+        LogFormatter::ptr new_val(new LogFormatter(val));
+        if (new_val->isError())
+        {
+            std::cout << "Logger setFormatter name=" << m_name
+                      << " value=" << val << " invalid formatter"
+                      << std::endl;
+            return;
+        }
+        setFormatter(new_val);
+    }
+
+    LogFormatter::ptr Logger::getFormatter()
+    {
+        return m_formatter;
+    }
+
     void Logger::log(LogLevel::Level level, LogEvent::ptr event)
     {
-        auto self = shared_from_this();
-        for (auto i : m_appenders)
+        if (level >= m_level)
         {
-            i->log(self, level, event);
+            auto self = shared_from_this();
+            if (!m_appenders.empty())
+            {
+                for (auto i : m_appenders)
+                {
+                    i->log(self, level, event);
+                }
+            }
+            else if (m_root)
+            {
+                m_root->log(level, event);
+            }
         }
     };
     void Logger::debug(LogEvent::ptr event)
@@ -363,6 +499,10 @@ namespace kvell
 
     void Logger::addAppender(LogAppender::ptr appender)
     {
+        if (!appender->getFormatter())
+        {
+            appender->setFormatter(m_formatter);
+        }
         m_appenders.push_back(appender);
     };
     void Logger::delAppender(LogAppender::ptr appender)
@@ -378,6 +518,11 @@ namespace kvell
             }
         }
     };
+
+    void Logger::clearAppenders()
+    {
+        m_appenders.clear();
+    }
 
     FileLogAppender::FileLogAppender(const std::string &name)
         : m_filename(name)
@@ -396,14 +541,55 @@ namespace kvell
     {
         if (level >= m_level)
         {
-            m_filestream << m_formatter->format(logger, level, event);
+            uint64_t now = event->getTime();
+            if (now >= (m_lastTime + 3))
+            {
+                reopen();
+                m_lastTime = now;
+            }
+            if (!m_formatter->format(m_filestream, logger, level, event))
+            {
+                std::cout << "error" << std::endl;
+            }
         }
     };
     void StdoutLogAppender::log(Logger::ptr logger, LogLevel::Level level, LogEvent::ptr event)
     {
         if (level >= m_level)
         {
-            std::cout << m_formatter->format(logger, level, event);
+            m_formatter->format(std::cout, logger, level, event);
         }
     };
+
+    LoggerManager::LoggerManager()
+    {
+        m_root.reset(new Logger);
+        m_root->addAppender(LogAppender::ptr(new StdoutLogAppender));
+
+        m_loggers[m_root->m_name] = m_root;
+        init();
+    }
+
+    Logger::ptr LoggerManager::getLogger(const std::string &name)
+    {
+        auto it = m_loggers.find(name);
+        if (it != m_loggers.end())
+        {
+            return it->second;
+        }
+
+        Logger::ptr logger(new Logger(name));
+        logger->m_root = m_root;
+        m_loggers[name] = logger;
+        return logger;
+    }
+
+    std::stringstream &LogEventWrap::getSS()
+    {
+        return m_event->getSS();
+    }
+
+    void LoggerManager::init()
+    {
+    }
 }
