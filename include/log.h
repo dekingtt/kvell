@@ -150,6 +150,7 @@ namespace kvell
         LogFormatter::ptr getFormatter() { return m_formatter; };
         void setLevel(LogLevel::Level level) { m_level = level; };
         LogLevel::Level getLevel() const { return m_level; }
+        virtual std::string toYamlString() = 0;
 
     protected:
         LogLevel::Level m_level = LogLevel::DEBUG;
@@ -162,6 +163,7 @@ namespace kvell
     public:
         typedef std::shared_ptr<StdoutLogAppender> ptr;
         void log(std::shared_ptr<Logger> logger, LogLevel::Level level, LogEvent::ptr event) override;
+        std::string toYamlString() override;
     };
 
     class FileLogAppender : public LogAppender
@@ -171,6 +173,7 @@ namespace kvell
         FileLogAppender(const std::string &name);
         void log(std::shared_ptr<Logger> logger, LogLevel::Level level, LogEvent::ptr event) override;
         bool reopen();
+        std::string toYamlString() override;
 
     private:
         std::string m_filename;
@@ -201,6 +204,7 @@ namespace kvell
         void setFormatter(LogFormatter::ptr formatter);
         void setFormatter(const std::string &val);
         LogFormatter::ptr getFormatter();
+        std::string toYamlString();
 
     private:
         std::string m_name;
@@ -217,6 +221,7 @@ namespace kvell
         Logger::ptr getLogger(const std::string &name);
         void init();
         Logger::ptr getRoot() const { return m_root; }
+        std::string toYamlString();
 
     private:
         std::map<std::string, Logger::ptr> m_loggers;

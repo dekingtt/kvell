@@ -33,7 +33,7 @@
 
 CMakeFiles/
 bin/
-lib/
-.vscode/
+#.vscode/
 build/
 log.txt
+thirdpart/dev/
