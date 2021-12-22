@@ -224,14 +224,14 @@ void test_loadconf() {
 }
 
 int main(int argc, char** argv) {
-    //test_yaml();
-    //test_config();
-    //test_class();
-    //test_log();
+    test_yaml();
+    test_config();
+    test_class();
+    test_log();
     kvell::EnvMgr::GetInstance()->init(argc, argv);
     test_loadconf();
     std::cout << " ==== " << std::endl;
-    sleep(10);
+    //sleep(10);
     test_loadconf();
     return 0;
     kvell::Config::Visit([](kvell::ConfigVarBase::ptr var) {

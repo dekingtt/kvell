@@ -3,10 +3,10 @@
         {
             "name": "Linux",
             "includePath": [
-                "${workspaceFolder}/**",
-                "${workspaceFolder}/include/**",
-                "${env.BOOST_ROOT}/**",
+                "${env.BOOST_ROOT}/",
+                "${workspaceFolder}/include/",
                 "${workspaceFolder}/thirdpart/include/"
+                //"${workspaceFolder}/**"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",

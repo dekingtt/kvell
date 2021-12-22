@@ -22,6 +22,16 @@ namespace kvell
 
     uint32_t GetFiberId();
 
+    /**
+     * @brief 获取当前时间的毫秒
+     */
+    uint64_t GetCurrentMS();
+
+    /**
+     * @brief 获取当前时间的微秒
+     */
+    uint64_t GetCurrentUS();
+
     template <class T>
     const char *TypeToName()
     {
@@ -45,6 +55,9 @@ namespace kvell
         static bool OpenForRead(std::ifstream &ifs, const std::string &filename, std::ios_base::openmode mode);
         static bool OpenForWrite(std::ofstream &ofs, const std::string &filename, std::ios_base::openmode mode);
     };
+
+    void Backtrace(std::vector<std::string> &bt, int size = 64, int skip = 1);
+    std::string BacktraceToString(int size = 64, int skip = 2, const std::string &prefix = "");
 } // namespace kvell
 
 #endif

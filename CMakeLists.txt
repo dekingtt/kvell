@@ -16,25 +16,32 @@ include_directories(${PROJECT_SOURCE_DIR}/thirdpart/include)
 link_directories(${PROJECT_SOURCE_DIR}/lib)
 link_directories(${PROJECT_SOURCE_DIR}/thirdpart/lib)
 
-# file(GLOB LIB_SRC
-#     "src/*.cpp"
-# )
-
-set(LIB_SRC
-    src/log.cpp
-    src/util.cpp
-    src/env.cpp
-    src/config.cpp
+file(GLOB LIB_SRC
+    "src/*"
 )
+
+# set(LIB_SRC
+#     src/log.cpp
+#     src/util.cpp
+#     src/env.cpp
+#     src/config.cpp
+# )
 
 set(LIBS
     kvell
     yaml-cpp
+    pthread
+    dl
 )
 
 add_library(kvell SHARED ${LIB_SRC})
 kvell_add_executable(test_log "test/test_log.cpp" kvell "${LIBS}")
 kvell_add_executable(test_config "test/test_config.cpp" kvell "${LIBS}")
+kvell_add_executable(test_hook "test/test_hook.cpp" kvell "${LIBS}")
+kvell_add_executable(test_scheduler "test/test_scheduler.cpp" kvell "${LIBS}")
+kvell_add_executable(test_thread "test/test_thread.cpp" kvell "${LIBS}")
+kvell_add_executable(test_fiber "test/test_fiber.cpp" kvell "${LIBS}")
+kvell_add_executable(test_iomanager "test/test_iomanager.cpp" kvell "${LIBS}")
 #add_executable(test_log "test/test_log.cpp")
 #add_dependencies(test_log kvell)
 #target_link_libraries(test_log kvell yaml-cpp)
